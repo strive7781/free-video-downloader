@@ -49,6 +49,7 @@ free-video-downloader/
 ├── backend/
 │   ├── main.py              # FastAPI 入口
 │   ├── downloader.py         # yt-dlp 封装
+│   ├── douyin.py             # 抖音链接解析与下载
 │   ├── requirements.txt      # Python 依赖
 │   └── downloads/            # 临时下载目录
 ├── frontend/
@@ -58,6 +59,8 @@ free-video-downloader/
 │   │   └── components/       # Vue 组件
 │   ├── vite.config.js
 │   └── package.json
+├── docs/
+│   └── 视频下载功能总结.md
 └── README.md
 ```
 
@@ -65,5 +68,11 @@ free-video-downloader/
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
-| `/api/parse` | POST | 解析视频信息 (标题、封面、可选格式) |
-| `/api/download` | POST | 下载视频文件 |
+| `/api/parse` | POST | 解析视频信息（标题、封面、可选格式等） |
+| `/api/download` | POST | 触发下载，返回 `file_id` 与建议文件名 |
+| `/api/download/{file_id}` | GET | 通过 `file_id` 取回已落盘文件（`fn` 查询参数可为展示名） |
+| `/api/thumbnail` | GET | 代理缩略图，参数 `url` |
+
+## 相关文档
+
+- [视频下载功能实现总结](./docs/视频下载功能总结.md)：双路径架构（抖音 / yt-dlp）、接口约定、`downloader.py` 行为说明与环境依赖。
