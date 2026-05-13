@@ -1,31 +1,31 @@
 <template>
-  <nav class="sticky top-0 z-50 bg-white/85 backdrop-blur-lg border-b border-blue-50/80">
+  <nav class="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-slate-100/90">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center gap-4 h-[4.25rem]">
+      <div class="flex items-center gap-4 h-[4.125rem]">
         <!-- Logo -->
         <div class="flex items-center gap-2.5 cursor-pointer shrink-0" @click="scrollToTop">
-          <div class="w-9 h-9 rounded-xl bg-[#3b82f6] flex items-center justify-center shadow-sm shadow-blue-500/25">
-            <svg class="w-4 h-4 text-white translate-x-[1px]" fill="currentColor" viewBox="0 0 24 24">
+          <div class="w-9 h-9 rounded-full bg-[#2580f7] flex items-center justify-center shadow-[0_4px_14px_rgba(37,99,235,0.28)] ring-4 ring-[#dbeafe]/60">
+            <svg class="w-[15px] h-[15px] text-white translate-x-[0.5px]" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-lg font-bold text-gray-900 tracking-tight">映<span class="text-[#2563eb]">鉴</span></span>
-            <span class="hidden sm:inline-flex text-[11px] font-medium text-gray-500 bg-gray-100/90 border border-gray-200/80 rounded-full px-2 py-0.5">
+            <span class="text-lg font-bold text-[#0f3488] tracking-tight">SaveAny</span>
+            <span class="hidden sm:inline-flex text-[11px] font-semibold text-[#1d63d8] bg-[#eaf3ff] border border-[#cfe4ff]/90 rounded-full px-2.5 py-0.5">
               万能视频下载
             </span>
           </div>
         </div>
 
         <!-- Center nav -->
-        <div class="hidden md:flex flex-1 justify-center items-center gap-10">
-          <a href="#features" class="text-sm font-medium text-gray-600 hover:text-[#2563eb] transition-colors">
+        <div class="hidden md:flex flex-1 justify-center items-center gap-12 xl:gap-14">
+          <a href="#features" class="text-[15px] font-medium text-slate-600 hover:text-[#2563eb] transition-colors">
             功能特性
           </a>
-          <a href="#pricing" class="text-sm font-medium text-gray-600 hover:text-[#2563eb] transition-colors">
+          <a href="#pricing" class="text-[15px] font-medium text-slate-600 hover:text-[#2563eb] transition-colors">
             套餐价格
           </a>
-          <a href="#platforms" class="text-sm font-medium text-gray-600 hover:text-[#2563eb] transition-colors">
+          <a href="#platforms" class="text-[15px] font-medium text-slate-600 hover:text-[#2563eb] transition-colors">
             支持平台
           </a>
         </div>
@@ -34,7 +34,7 @@
         <div class="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
           <button
             type="button"
-            class="vip-btn inline-flex items-center gap-1.5 rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-[#1d4ed8] hover:bg-[#dbeafe] transition-colors"
+            class="vip-btn inline-flex items-center gap-1.5 rounded-full border border-[#b6d6ff] bg-[#e8f2ff] px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-[#1854c7] hover:bg-[#d8eaff] transition-colors shadow-sm shadow-blue-500/5"
             @click="openVip"
           >
             <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">

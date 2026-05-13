@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
   --color-primary-50: #eff6ff;
   --color-primary-100: #dbeafe;
   --color-primary-200: #bfdbfe;
@@ -16,7 +16,6 @@
 
 body {
   margin: 0;
-  background-color: #f8fafc;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -52,14 +51,64 @@ body {
   transform: none;
 }
 
+.btn-primary.rounded-full {
+  border-radius: 9999px;
+}
+
 .card {
   background: white;
   border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 40px -12px rgba(15, 23, 42, 0.08);
   transition: box-shadow 0.3s ease;
 }
 .card:hover {
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 16px 48px -12px rgba(15, 23, 42, 0.1);
+}
+
+.saveany-sheet {
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.04),
+    0 14px 48px -14px rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.saveany-summary-prose {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: rgb(51 65 85);
+}
+
+.saveany-summary-prose .md-h {
+  margin-top: 1.35rem;
+  margin-bottom: 0.65rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+}
+
+.saveany-summary-prose .md-h:first-child {
+  margin-top: 0;
+}
+
+.saveany-summary-prose p {
+  margin: 0.45rem 0;
+}
+
+.saveany-summary-prose ol {
+  padding-left: 1.25rem;
+  margin: 0.45rem 0;
+}
+
+.saveany-summary-prose ul {
+  padding-left: 1.35rem;
+  margin: 0.25rem 0 0.5rem;
+  list-style: disc;
 }
 
 @keyframes fadeInUp {

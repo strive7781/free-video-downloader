@@ -24,3 +24,11 @@ Thumbs.db
 # Env & secrets
 .env
 .env.*
+!.env.example
+!backend/.env.example
+backend/.env
+*.pem
+
+# Browser-exported cookies (yt-dlp); never commit real sessions
+cookies.txt
+**/cookies.txt

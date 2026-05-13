@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 import re
 import subprocess
 import time
@@ -18,22 +19,57 @@ DOWNLOAD_DIR.mkdir(exist_ok=True)
 _CLEANUP_MAX_AGE = 3600
 
 # ---------------------------------------------------------------------------
-# Cookie helpers
+# Cookie helpers — only use cookies.txt if present, never read browser DB
 # ---------------------------------------------------------------------------
-# Priority 1: backend/cookies.txt (manually exported Netscape cookie file)
-# Priority 2: browser cookies via --cookies-from-browser
 _COOKIES_FILE = Path(__file__).parent / "cookies.txt"
-_COOKIE_BROWSER_PREFERENCE = ("edge", "chrome", "firefox", "brave", "opera")
+
+_MAX_RETRIES = 4
+_RETRY_BASE_DELAY = 2.0
 
 
 def _cookie_opts() -> dict:
-    """Return yt-dlp cookie options. Prefers cookies.txt, then browser."""
     if _COOKIES_FILE.is_file():
         logger.info("Using cookies.txt at %s", _COOKIES_FILE)
         return {"cookiefile": str(_COOKIES_FILE)}
-    for name in _COOKIE_BROWSER_PREFERENCE:
-        return {"cookiesfrombrowser": (name,)}
     return {}
+
+
+def _is_retryable(err: Exception) -> bool:
+    msg = str(err)
+    return any(k in msg for k in ("403", "Forbidden", "429", "Too Many", "timed out", "Connection"))
+
+
+def _extract_with_retry(opts: dict, url: str, download: bool = False):
+    """
+    Call yt-dlp extract_info with retries on transient HTTP errors (403/429 etc.).
+    Uses exponential backoff with jitter.
+    """
+    last_err = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            with YoutubeDL(opts) as ydl:
+                return ydl.extract_info(url, download=download)
+        except Exception as e:
+            last_err = e
+            if attempt < _MAX_RETRIES - 1 and _is_retryable(e):
+                delay = _RETRY_BASE_DELAY * (2 ** attempt) + random.uniform(0, 1)
+                logger.warning("yt-dlp attempt %d/%d failed (%s), retrying in %.1fs…",
+                               attempt + 1, _MAX_RETRIES, str(e)[:100], delay)
+                time.sleep(delay)
+            else:
+                break
+    raise last_err
+
+
+def _format_size(bytes_val) -> str:
+    """Human-readable file size string."""
+    if not bytes_val:
+        return ""
+    if bytes_val < 1024 * 1024:
+        return f"{bytes_val / 1024:.1f}KB"
+    if bytes_val < 1024 * 1024 * 1024:
+        return f"{bytes_val / (1024 * 1024):.1f}MB"
+    return f"{bytes_val / (1024 * 1024 * 1024):.2f}GB"
 
 
 def _sanitize_filename(name: str) -> str:
@@ -54,14 +90,7 @@ def _vcodec_compat_rank(vcodec: str | None) -> int:
     return 3
 
 
-# Prefer H.264 merges first; fall back when site has no AVC.
-_FORMAT_BEST_COMPAT = (
-    "bv*[vcodec^=avc1]+ba/"
-    "bestvideo[vcodec^=avc1]+bestaudio/"
-    "bv*+ba/"
-    "bestvideo+bestaudio/"
-    "best"
-)
+_FORMAT_BEST_QUALITY = "bestvideo+bestaudio/best"
 
 
 def parse_video(url: str) -> dict:
@@ -70,10 +99,10 @@ def parse_video(url: str) -> dict:
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
+        "noplaylist": True,
     }
     opts.update(_cookie_opts())
-    with YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=False)
+    info = _extract_with_retry(opts, url, download=False)
 
     formats_raw = info.get("formats") or []
     seen = set()
@@ -91,12 +120,15 @@ def parse_video(url: str) -> dict:
             label = f"{height}p"
             if label not in seen:
                 seen.add(label)
+                filesize = f.get("filesize") or f.get("filesize_approx")
+                size_str = _format_size(filesize) if filesize else ""
+                note = f"(视频+音频合并, {size_str})" if size_str else "(视频+音频合并)"
                 formats.append({
                     "format_id": f["format_id"],
                     "ext": f.get("ext", "mp4"),
                     "resolution": label,
-                    "filesize": f.get("filesize") or f.get("filesize_approx"),
-                    "quality_note": f.get("format_note", ""),
+                    "filesize": filesize,
+                    "quality_note": note,
                 })
         elif has_video and not has_audio and height:
             cur = video_only_heights.get(height)
@@ -114,42 +146,57 @@ def parse_video(url: str) -> dict:
             label = f"audio-{int(abr)}k" if abr else "audio"
             if label not in seen:
                 seen.add(label)
+                filesize = f.get("filesize") or f.get("filesize_approx")
+                size_str = _format_size(filesize) if filesize else ""
+                note = f"(仅音频, {size_str})" if size_str else "(仅音频)"
                 formats.append({
                     "format_id": f["format_id"],
                     "ext": f.get("ext", "m4a"),
                     "resolution": label,
-                    "filesize": f.get("filesize") or f.get("filesize_approx"),
-                    "quality_note": f.get("format_note", ""),
+                    "filesize": filesize,
+                    "quality_note": note,
                 })
 
-    # For DASH-style platforms, create merged format entries from video-only streams
-    has_video_formats = any("p" in f["resolution"] for f in formats)
-    if not has_video_formats and video_only_heights:
+    # Always show DASH video-only streams as merged options (video+bestaudio)
+    if video_only_heights:
         for height in sorted(video_only_heights.keys(), reverse=True):
             f = video_only_heights[height]
             label = f"{height}p"
             if label not in seen:
                 seen.add(label)
-                vnote = "合并音视频"
-                if _vcodec_compat_rank(f.get("vcodec")) == 0:
-                    vnote = "合并音视频 · H.264 兼容"
-                elif _vcodec_compat_rank(f.get("vcodec")) == 2:
-                    vnote = "合并音视频 · AV1（需支持 AV1 的播放器）"
-                formats.insert(0, {
+                filesize = f.get("filesize") or f.get("filesize_approx")
+                size_str = _format_size(filesize) if filesize else ""
+                note = f"(仅视频, {size_str})" if size_str else "(仅视频)"
+                formats.append({
                     "format_id": f"{f['format_id']}+bestaudio",
                     "ext": "mp4",
                     "resolution": label,
-                    "filesize": f.get("filesize") or f.get("filesize_approx"),
-                    "quality_note": f.get("format_note", "") or vnote,
+                    "filesize": filesize,
+                    "quality_note": note,
                 })
 
-    # Always offer a "best" option at the top
+    # Sort formats by resolution height descending
+    def _height_key(fmt):
+        m = __import__('re').match(r'(\d+)p', fmt.get('resolution', ''))
+        return int(m.group(1)) if m else 0
+    formats.sort(key=_height_key, reverse=True)
+
+    # Determine best resolution label from available formats
+    max_height = 0
+    for fmt in formats:
+        m = __import__('re').match(r'(\d+)p', fmt.get('resolution', ''))
+        if m:
+            max_height = max(max_height, int(m.group(1)))
+
+    best_label = f"{max_height}p 最佳" if max_height > 0 else "最佳画质"
+
+    # Always offer a "best quality" option at the top (no codec restriction)
     formats.insert(0, {
-        "format_id": _FORMAT_BEST_COMPAT,
+        "format_id": _FORMAT_BEST_QUALITY,
         "ext": "mp4",
-        "resolution": "最佳画质",
+        "resolution": best_label,
         "filesize": None,
-        "quality_note": "优先 H.264，兼容常见播放器",
+        "quality_note": "(视频+音频合并)",
     })
 
     return {
@@ -174,6 +221,7 @@ def _download_opts(url: str, format_id: str) -> dict:
         "outtmpl": str(DOWNLOAD_DIR / "%(id)s.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
+        "noplaylist": True,
         "merge_output_format": "mp4",
         "retries": 20,
         "fragment_retries": 20,
@@ -268,25 +316,29 @@ def _transcode_video_to_h264_inplace(path: Path) -> None:
 def download_video(url: str, format_id: str) -> tuple[Path, str]:
     """Download video and return (file_path, display_title)."""
     opts = _download_opts(url, format_id)
+    info = _extract_with_retry(opts, url, download=True)
+    if not info:
+        raise RuntimeError("yt-dlp 未返回视频信息，下载可能未成功")
     with YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url)
         filename = ydl.prepare_filename(info)
-        title = _sanitize_filename(info.get("title", "video"))
-        ext = info.get("ext", "mp4")
-        # yt-dlp may change extension after merge
-        filepath = Path(filename)
-        if not filepath.exists():
-            mp4_path = filepath.with_suffix(".mp4")
-            if mp4_path.exists():
-                filepath = mp4_path
-                ext = "mp4"
-        if not filepath.exists():
-            raise RuntimeError("下载完成但未找到文件，请重试或更换清晰度")
-        vcodec = _primary_video_codec(filepath)
-        if vcodec and not _codec_is_widely_playable(vcodec):
-            _transcode_video_to_h264_inplace(filepath)
-        display_name = f"{title}.{ext}"
-        return filepath, display_name
+    if not filename:
+        raise RuntimeError("下载完成但未获取文件名")
+    title = _sanitize_filename(info.get("title", "video"))
+    ext = info.get("ext", "mp4")
+    # yt-dlp may change extension after merge
+    filepath = Path(filename)
+    if not filepath.exists():
+        mp4_path = filepath.with_suffix(".mp4")
+        if mp4_path.exists():
+            filepath = mp4_path
+            ext = "mp4"
+    if not filepath.exists():
+        raise RuntimeError("下载完成但未找到文件，请重试或更换清晰度")
+    vcodec = _primary_video_codec(filepath)
+    if vcodec and not _codec_is_widely_playable(vcodec):
+        _transcode_video_to_h264_inplace(filepath)
+    display_name = f"{title}.{ext}"
+    return filepath, display_name
 
 
 def cleanup_old_files():

@@ -4,3 +4,5 @@ yt-dlp
 python-multipart
 httpx
 requests
+openai
+python-dotenv
