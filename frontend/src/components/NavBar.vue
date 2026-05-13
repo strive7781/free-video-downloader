@@ -1,51 +1,61 @@
 <template>
-  <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
+  <nav class="sticky top-0 z-50 bg-white/85 backdrop-blur-lg border-b border-blue-50/80">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
+      <div class="flex items-center gap-4 h-[4.25rem]">
         <!-- Logo -->
-        <div class="flex items-center gap-2 cursor-pointer" @click="scrollToTop">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <div class="flex items-center gap-2.5 cursor-pointer shrink-0" @click="scrollToTop">
+          <div class="w-9 h-9 rounded-xl bg-[#3b82f6] flex items-center justify-center shadow-sm shadow-blue-500/25">
+            <svg class="w-4 h-4 text-white translate-x-[1px]" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
             </svg>
           </div>
-          <div class="flex flex-col items-start leading-tight">
-            <span class="text-xl font-bold text-gray-900 tracking-tight">映<span class="text-blue-600">鉴</span></span>
-            <span class="text-[10px] font-medium text-gray-400 tracking-[0.2em] uppercase">Kinema</span>
+          <div class="flex items-center gap-2">
+            <span class="text-lg font-bold text-gray-900 tracking-tight">映<span class="text-[#2563eb]">鉴</span></span>
+            <span class="hidden sm:inline-flex text-[11px] font-medium text-gray-500 bg-gray-100/90 border border-gray-200/80 rounded-full px-2 py-0.5">
+              万能视频下载
+            </span>
           </div>
         </div>
 
-        <!-- Desktop Menu -->
-        <div class="hidden md:flex items-center gap-8">
-          <a href="#hero" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">首页</a>
-          <a href="#platforms" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">支持平台</a>
-          <a href="#pricing" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">定价</a>
+        <!-- Center nav -->
+        <div class="hidden md:flex flex-1 justify-center items-center gap-10">
+          <a href="#features" class="text-sm font-medium text-gray-600 hover:text-[#2563eb] transition-colors">
+            功能特性
+          </a>
+          <a href="#pricing" class="text-sm font-medium text-gray-600 hover:text-[#2563eb] transition-colors">
+            套餐价格
+          </a>
+          <a href="#platforms" class="text-sm font-medium text-gray-600 hover:text-[#2563eb] transition-colors">
+            支持平台
+          </a>
         </div>
 
-        <!-- Login Button -->
-        <div class="flex items-center gap-3">
-          <button class="hidden sm:inline-flex text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">
-            登录
+        <!-- Right -->
+        <div class="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
+          <button
+            type="button"
+            class="vip-btn inline-flex items-center gap-1.5 rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-[#1d4ed8] hover:bg-[#dbeafe] transition-colors"
+            @click="openVip"
+          >
+            <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            开通 VIP
           </button>
-          <button class="btn-primary text-sm px-5 py-2">
-            免费体验
+
+          <button type="button" class="md:hidden p-2 text-gray-500 rounded-lg hover:bg-gray-50" @click="mobileOpen = !mobileOpen" aria-label="菜单">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path v-if="!mobileOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
-
-        <!-- Mobile Menu Button -->
-        <button class="md:hidden p-2 text-gray-500" @click="mobileOpen = !mobileOpen">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path v-if="!mobileOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
       </div>
 
-      <!-- Mobile Menu -->
-      <div v-if="mobileOpen" class="md:hidden pb-4 space-y-2">
-        <a href="#hero" class="block px-3 py-2 text-sm text-gray-600 hover:text-blue-600 rounded-lg hover:bg-blue-50" @click="mobileOpen = false">首页</a>
-        <a href="#platforms" class="block px-3 py-2 text-sm text-gray-600 hover:text-blue-600 rounded-lg hover:bg-blue-50" @click="mobileOpen = false">支持平台</a>
-        <a href="#pricing" class="block px-3 py-2 text-sm text-gray-600 hover:text-blue-600 rounded-lg hover:bg-blue-50" @click="mobileOpen = false">定价</a>
+      <div v-if="mobileOpen" class="md:hidden pb-4 space-y-1 border-t border-gray-100 mt-px pt-3">
+        <a href="#features" class="block px-3 py-2.5 text-sm font-medium text-gray-600 hover:text-[#2563eb] rounded-lg hover:bg-blue-50/80" @click="mobileOpen = false">功能特性</a>
+        <a href="#pricing" class="block px-3 py-2.5 text-sm font-medium text-gray-600 hover:text-[#2563eb] rounded-lg hover:bg-blue-50/80" @click="mobileOpen = false">套餐价格</a>
+        <a href="#platforms" class="block px-3 py-2.5 text-sm font-medium text-gray-600 hover:text-[#2563eb] rounded-lg hover:bg-blue-50/80" @click="mobileOpen = false">支持平台</a>
       </div>
     </div>
   </nav>
@@ -58,5 +68,9 @@ const mobileOpen = ref(false)
 
 function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function openVip() {
+  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
 }
 </script>

@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import subprocess
 import time
@@ -8,11 +9,31 @@ from urllib.parse import urlparse
 
 from yt_dlp import YoutubeDL
 
+logger = logging.getLogger(__name__)
+
 DOWNLOAD_DIR = Path(__file__).parent / "downloads"
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 
 # Max age for temp files (1 hour)
 _CLEANUP_MAX_AGE = 3600
+
+# ---------------------------------------------------------------------------
+# Cookie helpers
+# ---------------------------------------------------------------------------
+# Priority 1: backend/cookies.txt (manually exported Netscape cookie file)
+# Priority 2: browser cookies via --cookies-from-browser
+_COOKIES_FILE = Path(__file__).parent / "cookies.txt"
+_COOKIE_BROWSER_PREFERENCE = ("edge", "chrome", "firefox", "brave", "opera")
+
+
+def _cookie_opts() -> dict:
+    """Return yt-dlp cookie options. Prefers cookies.txt, then browser."""
+    if _COOKIES_FILE.is_file():
+        logger.info("Using cookies.txt at %s", _COOKIES_FILE)
+        return {"cookiefile": str(_COOKIES_FILE)}
+    for name in _COOKIE_BROWSER_PREFERENCE:
+        return {"cookiesfrombrowser": (name,)}
+    return {}
 
 
 def _sanitize_filename(name: str) -> str:
@@ -50,6 +71,7 @@ def parse_video(url: str) -> dict:
         "no_warnings": True,
         "skip_download": True,
     }
+    opts.update(_cookie_opts())
     with YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
 
@@ -147,20 +169,18 @@ def _download_opts(url: str, format_id: str) -> dict:
     """yt-dlp options tuned to reduce incomplete reads (CDN / flaky HTTP)."""
     parsed = urlparse(url)
     origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else ""
-    return {
+    opts = {
         "format": format_id,
         "outtmpl": str(DOWNLOAD_DIR / "%(id)s.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
         "merge_output_format": "mp4",
-        # Retry & resume (fixes "X bytes read, Y more expected")
         "retries": 20,
         "fragment_retries": 20,
         "file_access_retries": 10,
         "retry_sleep_functions": {"http": lambda n: min(8.0, 2**n)},
         "socket_timeout": 90,
         "continuedl": True,
-        # Single fragment at a time often stabilizes Bilibili / DASH CDNs
         "concurrent_fragment_downloads": 1,
         "http_headers": {
             "User-Agent": (
@@ -172,6 +192,8 @@ def _download_opts(url: str, format_id: str) -> dict:
             **({"Origin": origin} if origin else {}),
         },
     }
+    opts.update(_cookie_opts())
+    return opts
 
 
 def _primary_video_codec(path: Path) -> str | None:

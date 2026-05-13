@@ -1,5 +1,6 @@
 import re
 import logging
+from pathlib import Path
 from urllib.parse import urlparse, unquote
 
 import httpx
@@ -9,9 +10,12 @@ from fastapi.responses import FileResponse, StreamingResponse, Response
 from pydantic import BaseModel, field_validator
 
 from downloader import parse_video, download_video, start_cleanup_scheduler
+from douyin import DouyinParser, is_douyin_url
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+_douyin = DouyinParser(download_dir=str(Path(__file__).parent / "downloads"))
 
 app = FastAPI(title="映鉴 Kinema API")
 
@@ -63,13 +67,26 @@ def on_startup():
 @app.post("/api/parse")
 async def api_parse(req: ParseRequest):
     try:
-        result = parse_video(req.url)
+        if is_douyin_url(req.url):
+            result = _douyin.parse(req.url)
+        else:
+            result = parse_video(req.url)
         return {"code": 0, "data": result}
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Parse failed for URL: %s", req.url)
         msg = str(e)
+        if "Sign in to confirm" in msg or "cookies" in msg.lower() or "cookie" in msg.lower():
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "该平台需要浏览器 Cookie 才能解析。请按以下步骤操作：\n"
+                    "1. 关闭 Edge/Chrome 浏览器\n"
+                    "2. 重启后端服务后重试\n"
+                    "或者：用浏览器扩展导出 cookies.txt 放到 backend/ 目录下（推荐）"
+                ),
+            )
         if "Unsupported URL" in msg:
             raise HTTPException(status_code=400, detail="不支持该链接，请确认是否为有效的视频地址")
         if "Video unavailable" in msg or "not available" in msg.lower():
@@ -83,8 +100,12 @@ async def api_parse(req: ParseRequest):
 async def api_download(req: DownloadRequest):
     """Trigger download and return a file_id for the GET endpoint."""
     try:
-        filepath, display_name = download_video(req.url, req.format_id)
-        file_id = filepath.stem
+        if is_douyin_url(req.url):
+            filepath, display_name = _douyin.download(req.url)
+            file_id = Path(filepath).stem
+        else:
+            filepath, display_name = download_video(req.url, req.format_id)
+            file_id = filepath.stem
         return {"code": 0, "file_id": file_id, "filename": display_name}
     except HTTPException:
         raise

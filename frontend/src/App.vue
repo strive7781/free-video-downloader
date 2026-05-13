@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col bg-[#f8fafc]">
+  <div class="min-h-screen flex flex-col bg-[#fafbfd]">
     <NavBar />
     <main class="flex-1">
       <HeroSection
