@@ -1,7 +1,7 @@
 <template>
   <nav class="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-slate-100/90">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center gap-4 h-[4.125rem]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center gap-4 h-[3.5rem] sm:h-[3.625rem]">
         <!-- Logo -->
         <div class="flex items-center gap-2.5 cursor-pointer shrink-0" @click="scrollToTop">
           <div class="w-9 h-9 rounded-full bg-[#2580f7] flex items-center justify-center shadow-[0_4px_14px_rgba(37,99,235,0.28)] ring-4 ring-[#dbeafe]/60">

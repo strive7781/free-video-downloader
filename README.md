@@ -4,7 +4,7 @@
 
 基于 Vue 3、FastAPI、[yt-dlp](https://github.com/yt-dlp/yt-dlp) 的全栈示例项目，可用作个人学习或二次开发起点。
 
-**版本记录**：`version0513` — 完成 AI 总结相关能力（字幕提取、流式摘要、思维导图、基于字幕的问答）。
+**版本记录**：`v0515` — 前端布局优化：解析结果双栏同屏（约 40:60）、解析成功后自动触发 AI 总结并保留「重新总结」；收紧导航下 Hero 与结果区的纵向间距以便首屏呈现更多核心内容；开发与文档默认后端端口为 **8000**（与 `frontend/vite.config.js` 代理一致）。历史版本：`version0513` — 完成 AI 总结相关能力（字幕提取、流式摘要、思维导图、基于字幕的问答）。
 
 ## 功能概览
 
@@ -46,11 +46,11 @@ cp .env.example .env
 
 ### 3. 启动后端服务
 
-开发与前端默认代理一致时，建议使用 **8001** 端口（与 `frontend/vite.config.js` 中 `/api` 代理目标一致）：
+开发与前端默认代理一致时，建议使用 **8000** 端口（与 `frontend/vite.config.js` 中 `/api` 代理目标一致）：
 
 ```bash
 cd backend
-uvicorn main:app --reload --port 8001
+uvicorn main:app --reload --port 8000
 ```
 
 若改用其他端口，请同步修改 `frontend/vite.config.js` 里的 `proxy['/api'].target`。

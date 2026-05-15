@@ -1,11 +1,14 @@
 <template>
-  <section class="pb-10 px-4 sm:px-6 lg:px-8 animate-fadeInUp">
-    <div class="max-w-4xl mx-auto">
+  <section
+    class="animate-fadeInUp"
+    :class="embedded ? 'pb-0 px-0' : 'pb-10 px-4 sm:px-6 lg:px-8'"
+  >
+    <div :class="embedded ? 'max-w-none mx-0 w-full' : 'max-w-4xl mx-auto'">
       <div class="saveany-sheet overflow-hidden">
         <!-- Video info -->
-        <div class="p-6 sm:p-8 lg:p-9">
-          <div class="flex flex-col sm:flex-row gap-6 lg:gap-8">
-            <div class="sm:w-[272px] flex-shrink-0">
+        <div :class="embedded ? 'p-4 sm:p-5' : 'p-6 sm:p-8 lg:p-9'">
+          <div :class="embedded ? 'flex flex-col gap-3.5' : 'flex flex-col sm:flex-row gap-6 lg:gap-8'">
+            <div :class="embedded ? 'w-full shrink-0' : 'sm:w-[272px] flex-shrink-0'">
               <div class="relative rounded-2xl overflow-hidden bg-slate-100 aspect-video shadow-inner ring-1 ring-slate-100">
                 <img
                   v-if="thumbnailSrc"
@@ -61,23 +64,29 @@
         <div class="h-px bg-slate-100" />
 
         <!-- Formats -->
-        <div class="px-6 sm:px-8 lg:px-9 py-7">
-          <h4 class="flex items-center gap-2 text-base font-semibold text-slate-900 mb-5">
+        <div :class="embedded ? 'px-4 sm:px-5 lg:px-5 py-4' : 'px-6 sm:px-8 lg:px-9 py-7'">
+          <h4 class="flex items-center gap-2 text-base font-semibold text-slate-900 mb-3">
             <svg class="w-5 h-5 text-[#3b82f6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
             </svg>
             选择清晰度和格式
           </h4>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div
+            class="grid gap-3"
+            :class="embedded ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'"
+          >
             <button
               v-for="f in video.formats"
               :key="f.format_id"
               type="button"
               @click="selectedFormat = f.format_id"
-              class="flex items-start gap-3.5 p-4 rounded-xl border text-left transition-all cursor-pointer"
-              :class="selectedFormat === f.format_id
-                ? 'border-[#3b82f6] bg-[#f0f7ff] ring-2 ring-[#3b82f6]/20'
-                : 'border-slate-200/95 bg-white hover:border-[#93c5fd] hover:bg-slate-50/80'"
+              class="flex items-start gap-3.5 rounded-xl border text-left transition-all cursor-pointer"
+              :class="[
+                embedded ? 'w-full p-3.5 sm:p-4' : 'p-4',
+                selectedFormat === f.format_id
+                  ? 'border-[#3b82f6] bg-[#f0f7ff] ring-2 ring-[#3b82f6]/20'
+                  : 'border-slate-200/95 bg-white hover:border-[#93c5fd] hover:bg-slate-50/80',
+              ]"
             >
               <div
                 class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -105,9 +114,22 @@
         <div class="h-px bg-slate-100" />
 
         <!-- Actions -->
-        <div class="px-6 sm:px-8 lg:px-9 py-6 bg-slate-50/35">
-          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 flex-1">
+        <div
+          class="border-t border-slate-100/90"
+          :class="embedded
+            ? 'px-4 sm:px-5 lg:px-5 py-4 rounded-b-[17px] bg-white'
+            : 'px-6 sm:px-8 lg:px-9 py-6 bg-slate-50/35'"
+        >
+          <div
+            class="gap-4"
+            :class="embedded
+              ? 'flex flex-col'
+              : 'flex flex-col lg:flex-row lg:items-center lg:justify-between'"
+          >
+            <div
+              class="flex gap-3 sm:gap-4"
+              :class="embedded ? 'flex-col items-stretch' : 'flex-col sm:flex-row items-stretch sm:items-center justify-center flex-1'"
+            >
               <button
                 type="button"
                 @click="$emit('download', selectedFormat)"
@@ -136,14 +158,17 @@
                 <svg v-else class="w-5 h-5 shrink-0 text-[#f59e0b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
-                {{ summarizing ? 'AI 分析中…' : 'AI 总结' }}
+                {{ summarizeButtonLabel }}
               </button>
             </div>
-            <p class="text-sm text-slate-400 text-center lg:text-right lg:max-w-xs lg:leading-relaxed whitespace-normal">
+            <p
+              class="text-sm text-slate-400 whitespace-normal leading-relaxed"
+              :class="embedded ? 'text-center' : 'text-center lg:text-right lg:max-w-xs'"
+            >
               {{ selectedFormatLabel ? `已选择: ${selectedFormatLabel}` : '请选择清晰度及格式' }}
             </p>
           </div>
-          <div v-if="downloadProgress" class="mt-4 text-center lg:text-right">
+          <div v-if="downloadProgress" class="mt-4" :class="embedded ? 'text-center' : 'text-center lg:text-right'">
             <p class="text-sm" :class="downloadProgress.includes('失败') ? 'text-red-500' : 'text-emerald-600'">
               {{ downloadProgress }}
             </p>
@@ -162,9 +187,17 @@ const props = defineProps({
   downloading: Boolean,
   summarizing: Boolean,
   downloadProgress: String,
+  embedded: { type: Boolean, default: false },
+  summarizeRegenerate: { type: Boolean, default: false },
 })
 
 defineEmits(['download', 'summarize'])
+
+const summarizeButtonLabel = computed(() => {
+  if (props.summarizing) return 'AI 分析中…'
+  if (props.summarizeRegenerate) return '重新总结'
+  return 'AI 总结'
+})
 
 const selectedFormat = ref('')
 const imgFailed = ref(false)

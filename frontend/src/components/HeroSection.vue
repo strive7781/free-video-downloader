@@ -1,5 +1,5 @@
 <template>
-  <section id="hero" class="relative isolate overflow-hidden pt-14 pb-16 px-4 sm:px-6 lg:px-8">
+  <section id="hero" class="relative isolate overflow-hidden pt-2 sm:pt-3 lg:pt-4 pb-2 sm:pb-3 px-4 sm:px-6 lg:px-8">
     <!-- Soft background blobs -->
     <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
       <div class="hero-blob absolute -top-24 left-[8%] w-[420px] h-[420px] rounded-full bg-[#dbeafe]/45 blur-[80px]" />
@@ -10,19 +10,19 @@
     <div class="max-w-4xl mx-auto text-center">
       <!-- Badge -->
       <div
-        class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/95 border border-emerald-100/90 text-slate-600 text-sm font-medium mb-6 shadow-[0_2px_12px_rgba(16,185,129,0.08)] animate-fadeInUp"
+        class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/95 border border-emerald-100/90 text-slate-600 text-sm font-medium mb-2 sm:mb-3 shadow-[0_2px_12px_rgba(16,185,129,0.08)] animate-fadeInUp"
       >
         <span class="inline-flex rounded-full h-2 w-2 bg-emerald-500 shrink-0 ring-4 ring-emerald-500/20" />
         支持 1800+ 平台，永久免费使用
       </div>
 
       <!-- Title -->
-      <h1 class="text-4xl sm:text-5xl lg:text-[3.125rem] font-extrabold text-slate-800 leading-[1.22] mb-5 animate-fadeInUp" style="animation-delay: 0.08s">
+      <h1 class="text-3xl sm:text-4xl lg:text-[2.85rem] font-extrabold text-slate-800 leading-[1.2] mb-2.5 sm:mb-3 animate-fadeInUp" style="animation-delay: 0.08s">
         万能视频下载器，<span class="text-[#2580f7]">一键保存</span>
       </h1>
 
       <!-- Subtitle -->
-      <div class="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto mb-10 space-y-1 animate-fadeInUp" style="animation-delay: 0.14s">
+      <div class="text-[0.9375rem] sm:text-base text-slate-500 max-w-2xl mx-auto mb-3 space-y-0.5 animate-fadeInUp" style="animation-delay: 0.14s">
         <p>粘贴视频页面链接即可智能解析，支持多清晰度一键保存到本地。</p>
         <p class="text-slate-400 text-[0.9375rem] sm:text-base">
           覆盖 YouTube、Bilibili、抖音、TikTok 等平台，开箱即用。
@@ -33,7 +33,7 @@
       <div class="max-w-2xl mx-auto animate-fadeInUp" style="animation-delay: 0.22s">
         <form @submit.prevent="handleSubmit" class="relative">
           <div
-            class="flex items-stretch bg-white rounded-full shadow-[0_8px_30px_-8px_rgba(37,99,235,0.12)] border border-slate-100 focus-within:border-[#93c5fd] focus-within:ring-4 focus-within:ring-blue-500/10 transition-all pl-1 pr-2 py-1.5 gap-1"
+            class="flex items-stretch bg-white rounded-full shadow-[0_8px_30px_-8px_rgba(37,99,235,0.12)] border border-slate-100 focus-within:border-[#93c5fd] focus-within:ring-4 focus-within:ring-blue-500/10 transition-all pl-1 pr-2 py-1 gap-1"
           >
             <div class="flex items-center pl-4 pr-1 text-slate-400 shrink-0">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -44,13 +44,13 @@
               v-model="url"
               type="text"
               placeholder="粘贴视频页面链接..."
-              class="flex-1 min-w-0 py-3 px-2 text-[15px] sm:text-base text-slate-800 placeholder-slate-400 outline-none bg-transparent"
+              class="flex-1 min-w-0 py-2 sm:py-2.5 px-2 text-[15px] sm:text-base text-slate-800 placeholder-slate-400 outline-none bg-transparent"
               :disabled="loading"
             />
             <button
               type="submit"
               :disabled="!url.trim() || loading"
-              class="hero-parse-btn shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-6 sm:px-8 py-3 text-[15px] font-semibold text-white bg-gradient-to-br from-[#3b82f6] to-[#2563eb] shadow-[0_4px_14px_rgba(37,99,235,0.35)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.4)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-55 disabled:pointer-events-none disabled:shadow-none disabled:translate-y-0 transition-all"
+              class="hero-parse-btn shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-5 sm:px-7 py-2.5 sm:py-2.5 text-[15px] font-semibold text-white bg-gradient-to-br from-[#3b82f6] to-[#2563eb] shadow-[0_4px_14px_rgba(37,99,235,0.35)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.4)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-55 disabled:pointer-events-none disabled:shadow-none disabled:translate-y-0 transition-all"
             >
               <svg v-if="loading" class="w-[1.125rem] h-[1.125rem] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -65,20 +65,20 @@
         </form>
 
         <!-- Quick samples -->
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-2 text-sm">
+        <div class="mt-2.5 sm:mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 text-sm">
           <span class="text-slate-500 shrink-0">试试：</span>
           <button
             v-for="s in samples"
             :key="s.label"
             type="button"
-            class="px-3 py-1.5 rounded-full border border-slate-200 bg-white/85 text-slate-600 hover:border-[#93c5fd] hover:bg-blue-50/80 hover:text-[#2580f7] transition-colors"
+            class="px-2.5 py-1 rounded-full border border-slate-200 bg-white/85 text-slate-600 hover:border-[#93c5fd] hover:bg-blue-50/80 hover:text-[#2580f7] transition-colors"
             @click="url = s.url"
           >
             {{ s.label }}
           </button>
         </div>
 
-        <p v-if="error" class="mt-5 text-red-500 text-sm flex items-center justify-center gap-1.5">
+        <p v-if="error" class="mt-3 text-red-500 text-sm flex items-center justify-center gap-1.5">
           <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
           </svg>

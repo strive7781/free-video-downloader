@@ -1,19 +1,30 @@
 <template>
-  <section class="pb-14 px-4 sm:px-6 lg:px-8 animate-fadeInUp">
-    <div class="max-w-4xl mx-auto saveany-sheet p-8 sm:p-10">
+  <section
+    class="animate-fadeInUp"
+    :class="embedded ? 'pb-0 px-0 h-full min-h-0 flex flex-col' : 'pb-14 px-4 sm:px-6 lg:px-8'"
+  >
+    <div
+      class="mx-auto saveany-sheet"
+      :class="embedded
+        ? 'max-w-none w-full flex flex-col flex-1 min-h-0 overflow-hidden p-4 sm:p-4 lg:p-5'
+        : 'max-w-4xl p-8 sm:p-10'"
+    >
       <!-- Tab bar -->
-      <div class="flex flex-wrap gap-1 border-b border-slate-100 -mx-2 px-1 pb-px">
+      <div class="flex-shrink-0 flex flex-wrap gap-1 border-b border-slate-100 -mx-2 px-1 pb-px">
         <button
           type="button"
           v-for="tab in tabs"
           :key="tab.id"
           @click="activeTab = tab.id"
-          class="group flex items-center gap-2 px-4 py-3 text-[15px] font-medium transition-colors relative rounded-t-xl"
-          :class="activeTab === tab.id
-            ? 'text-[#1565d8]'
-            : 'text-slate-500 hover:text-slate-800'"
+          :class="[
+            'group flex items-center rounded-t-xl font-medium transition-colors relative',
+            embedded ? 'gap-1.5 px-3 py-2 text-sm' : 'gap-2 px-4 py-3 text-[15px]',
+            activeTab === tab.id
+              ? 'text-[#1565d8]'
+              : 'text-slate-500 hover:text-slate-800',
+          ]"
         >
-          <span class="text-base">{{ tab.icon }}</span>
+          <span :class="embedded ? 'text-[0.95rem]' : 'text-base'">{{ tab.icon }}</span>
           {{ tab.label }}
           <span
             v-if="activeTab === tab.id"
@@ -22,7 +33,19 @@
         </button>
       </div>
 
-      <div class="pt-7 min-h-[200px]">
+      <p
+        v-if="errorMessage"
+        class="flex-shrink-0 mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"
+        role="alert"
+      >
+        {{ errorMessage }}
+      </p>
+
+      <div
+        :class="embedded
+          ? 'flex-1 min-h-0 overflow-y-auto overscroll-contain pt-3'
+          : 'pt-7 min-h-[200px]'"
+      >
         <!-- ========= Summary (Markdown rendered) ========= -->
         <div v-show="activeTab === 'summary'" class="summary-prose">
           <template v-if="streamingText && !summaryDone">
@@ -222,7 +245,10 @@
         </div>
       </div>
 
-      <div class="mt-8 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+      <div
+        class="flex-shrink-0 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3"
+        :class="embedded ? 'mt-4 pt-3' : 'mt-8 pt-4'"
+      >
         <span class="text-xs text-slate-400">{{ sourceLabel }}</span>
         <button
           type="button"
@@ -251,6 +277,8 @@ const props = defineProps({
   streamingText: { type: String, default: '' },
   mindmapMarkdown: { type: String, default: '' },
   currentUrl: { type: String, default: '' },
+  embedded: { type: Boolean, default: false },
+  errorMessage: { type: String, default: '' },
 })
 
 const activeTab = ref('summary')

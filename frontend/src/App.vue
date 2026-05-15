@@ -13,22 +13,41 @@
         :loading="parsing"
         :error="parseError"
       />
-      <VideoCard
+      <section
         v-if="videoInfo"
-        :video="videoInfo"
-        :downloading="downloading"
-        :summarizing="summarizing"
-        :download-progress="downloadProgress"
-        @download="handleDownload"
-        @summarize="handleSummarize"
-      />
-      <SummaryPanel
-        v-if="summaryData"
-        :data="summaryData"
-        :streaming-text="streamingText"
-        :mindmap-markdown="mindmapMarkdown"
-        :current-url="currentUrl"
-      />
+        class="animate-fadeInUp pb-5 sm:pb-7 pt-0 px-4 sm:px-6 lg:px-8 bg-slate-200/35 border-t border-slate-300/25"
+      >
+        <div
+          class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-4 lg:gap-6 items-start"
+        >
+          <div class="min-w-0">
+            <VideoCard
+              embedded
+              :video="videoInfo"
+              :downloading="downloading"
+              :summarizing="summarizing"
+              :download-progress="downloadProgress"
+              :summarize-regenerate="summaryCompleted"
+              @download="handleDownload"
+              @summarize="handleSummarize"
+            />
+          </div>
+          <div
+            class="min-w-0 h-full lg:sticky lg:top-16 lg:self-start lg:max-h-[calc(100vh-4.5rem)] lg:flex lg:flex-col"
+          >
+            <SummaryPanel
+              v-if="summaryData"
+              embedded
+              class="lg:flex-1 lg:min-h-0"
+              :data="summaryData"
+              :streaming-text="streamingText"
+              :mindmap-markdown="mindmapMarkdown"
+              :current-url="currentUrl"
+              :error-message="summaryError"
+            />
+          </div>
+        </div>
+      </section>
       <FeatureSection />
       <PlatformGrid />
       <PricingSection />
@@ -79,18 +98,25 @@ const summarizing = ref(false)
 const summaryData = ref(null)
 const streamingText = ref('')
 const mindmapMarkdown = ref('')
+const summaryError = ref('')
+const summaryCompleted = ref(false)
 
 async function handleParse(url) {
   parsing.value = true
   parseError.value = ''
   videoInfo.value = null
   summaryData.value = null
+  summaryError.value = ''
+  summaryCompleted.value = false
+  streamingText.value = ''
+  mindmapMarkdown.value = ''
   currentUrl.value = url
 
   try {
     const res = await parseVideo(url)
     if (res.code === 0) {
       videoInfo.value = res.data
+      handleSummarize()
     } else {
       parseError.value = res.detail || '解析失败，请检查链接是否正确'
     }
@@ -103,6 +129,8 @@ async function handleParse(url) {
 
 function handleSummarize() {
   summarizing.value = true
+  summaryError.value = ''
+  summaryCompleted.value = false
   summaryData.value = null
   streamingText.value = ''
   mindmapMarkdown.value = ''
@@ -133,7 +161,10 @@ function handleSummarize() {
     onDone(err) {
       summarizing.value = false
       if (err) {
-        downloadProgress.value = err.message || 'AI 总结失败'
+        summaryError.value = err.message || 'AI 总结失败'
+        summaryCompleted.value = false
+      } else {
+        summaryCompleted.value = true
       }
     },
   })
