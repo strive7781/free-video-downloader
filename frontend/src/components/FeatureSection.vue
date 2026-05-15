@@ -1,6 +1,7 @@
 <template>
   <section id="features" class="py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-5xl mx-auto">
+      <h2 class="sr-only">功能特性</h2>
       <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div v-for="f in features" :key="f.title" class="card p-6 text-center">
           <div class="w-12 h-12 mx-auto mb-4 rounded-2xl flex items-center justify-center text-xl" :class="f.bg">

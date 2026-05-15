@@ -6,6 +6,7 @@
 
 **版本记录**
 
+- **`v0515.1`** — **SEO / GEO**：`index.html` 对齐 [liyupi/free-video-downloader](https://github.com/liyupi/free-video-downloader) 主页的 TDK、Open Graph、Twitter Card、microdata，以及 `FAQPage`、`WebApplication`、`HowTo` 的 JSON-LD；无 JS 场景的 `<noscript>` 长文本与对比表；`public/llms.txt` 供生成式检索；构建时通过 `VITE_SITE_ORIGIN` 注入 canonical 与绝对地址，并在 `dist` 生成 `robots.txt`、`sitemap.xml`（含首页与 `llms.txt`）。页脚与功能区块补充可引用说明与标题层级（`sr-only` H2）。文案按本仓库**开源自建**定位校准（未在后端实现会员计费时不写限次/Stripe 话术）。详见下文「SEO / GEO 与上线」。
 - **`v0515`** — 优化前端页面，让其变得更加紧凑：解析结果双栏同屏（约 40:60）；解析成功后自动触发 AI 总结并保留「重新总结」；收紧导航与 Hero、Hero 与结果区及卡片内边距，首屏呈现更多核心内容；开发与文档默认后端端口为 **8000**（与 `frontend/vite.config.js` 代理一致）。
 - **`version0513`** — 完成 AI 总结相关能力（字幕提取、流式摘要、思维导图、基于字幕的问答）。
 
@@ -68,6 +69,13 @@ npm run dev
 
 前端开发服务器默认：<http://localhost:5173> ，接口通过 Vite 代理到后端 `/api`。
 
+### 5. SEO / GEO 与上线（可选）
+
+1. 复制 [`frontend/.env.example`](./frontend/.env.example) 为 `frontend/.env.production`（或构建时注入环境变量），填写 **`VITE_SITE_ORIGIN`**（正式站点根地址，**无末尾斜杠**，如 `https://example.com`）。未填写时：本地/构建结果中不会包含依赖绝对 URL 的 meta 与部分结构化数据，且不会生成 `robots.txt` / `sitemap.xml`。
+2. 在 [`frontend/public`](./frontend/public) 放置分享图 **`og-image.png`**（建议约 1200×630），与 `index.html` 中 OG / `screenshot` 引用一致。
+3. 生产环境将静态资源部署到 CDN 或静态主机后，将 `sitemap.xml` 提交至各搜索引擎站长平台；可用 [Google Rich Results Test](https://search.google.com/test/rich-results) 校验 JSON-LD。
+4. **`/llms.txt`**：与首页同源下发，便于 AI / 爬虫读取结构化产品说明。
+
 ## 项目结构
 
 ```
@@ -82,14 +90,20 @@ free-video-downloader/
 │   ├── .env.example            # 环境变量示例（可复制为 .env）
 │   └── downloads/              # 临时下载目录（已被 .gitignore）
 ├── frontend/
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   └── llms.txt            # GEO：供生成式检索 / 爬虫读取的站点说明
 │   ├── src/
 │   │   ├── App.vue
 │   │   ├── api/index.js        # API 与 SSE 封装
 │   │   └── components/         # 含 SummaryPanel 等
-│   ├── vite.config.js
+│   ├── .env.example            # VITE_SITE_ORIGIN 等（不上传真实密钥）
+│   ├── index.html              # TDK、OG、JSON-LD、noscript 等
+│   ├── vite.config.js          # 构建期 SEO 注入与 robots/sitemap 写出
 │   └── package.json
 ├── docs/
-│   └── 视频下载功能总结.md
+│   ├── 视频下载功能总结.md
+│   └── 鱼厂 SEO 优化工作流.md  # 鱼厂内部 SEO 规范参考（可选读）
 └── README.md
 ```
 
@@ -108,3 +122,4 @@ free-video-downloader/
 ## 相关文档
 
 - [视频下载功能实现总结](./docs/视频下载功能总结.md)：双路径架构（抖音 / yt-dlp）、接口约定、`downloader.py` 行为说明与环境依赖。
+- [鱼厂 SEO 优化工作流](./docs/鱼厂%20SEO%20优化工作流.md)：页面 TDK、meta、结构化标签等工作流参考。

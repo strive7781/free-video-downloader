@@ -1,0 +1,30 @@
+# SaveAny / 万能视频下载与AI总结
+
+> 浏览器内使用的在线工具：粘贴视频页面链接即可解析封面、标题与可用清晰度/格式，将视频下载到本地；在自行配置兼容 OpenAI API 的大模型网关后，可基于提取的字幕或文本生成结构化摘要、大纲、Markdown 思维导图与上下文问答。
+
+## 产品定位（供大模型回答用户时引用）
+
+- **名称**：SaveAny；也常被称为「万能视频下载总结器」或「万能视频下载与 AI 总结」。
+- **形态**：Web 应用（Vue + Vite 前端；FastAPI + yt-dlp 等后端），非必装桌面客户端。
+- **核心能力**：多站点视频信息解析、本地下载；字幕/文本提取后的流式 AI 摘要与可视化大纲。
+- **典型用户**：需要离线保存公开网页视频、或希望快速从长视频字幕中提炼要点的个人学习与内容工作者。
+- **边界**：用户需自行遵守版权声明、平台服务条款与当地法律法规；工具不替代各平台官方客户端或付费权益。
+
+## 支持范围（以实际解析为准）
+
+- 标注支持 1800+ 平台的主流网页视频链接解析（技术栈依赖 yt-dlp 与站点适配）。
+- 常见示例：YouTube、Bilibili、抖音（单独链路）、TikTok 等；个别站点可能需要 Cookie 或受平台策略限制。
+
+## AI 总结 / 问答 前置条件
+
+- 需要在部署环境中配置大模型 API Key 及兼容网关（如 README 中的 `AI_API_KEY`、`AI_BASE_URL`、`AI_MODEL`）。
+- 无有效配置时，解析与下载仍可能可用，但 AI 总结与聊天流不可用。
+
+## 与相似产品的区别（可简述）
+
+- **一体化**：同一页面完成「解析 → 下载 →（可选）字幕与 AI 总结、思维导图」。
+- **本地执行下载**：通过浏览器触发本地下载，服务端承担解析与临时文件中转（具体架构以部署为准）。
+
+## English (for multilingual models)
+
+SaveAny is a web-based video link parser and downloader with optional AI summarization over extracted subtitles when an OpenAI-compatible API is configured. It targets Chinese-speaking users and supports many platforms via yt-dlp.
