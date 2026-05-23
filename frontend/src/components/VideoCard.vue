@@ -65,12 +65,20 @@
 
         <!-- Formats -->
         <div :class="embedded ? 'px-4 sm:px-5 lg:px-5 py-4' : 'px-6 sm:px-8 lg:px-9 py-7'">
+          <div v-if="!isVip" class="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
+            <span class="font-semibold">免费版</span>
+            <span>最高 720p · 每日 {{ downloadLimit ?? 3 }} 次下载</span>
+            <span v-if="downloadsRemaining != null">· 今日剩余 {{ downloadsRemaining }} 次</span>
+          </div>
           <h4 class="flex items-center gap-2 text-base font-semibold text-slate-900 mb-3">
             <svg class="w-5 h-5 text-[#3b82f6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
             </svg>
             选择清晰度和格式
           </h4>
+          <p v-if="video.quality_notice" class="mb-3 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 leading-relaxed">
+            {{ video.quality_notice }}
+          </p>
           <div
             class="grid gap-3"
             :class="embedded ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'"
@@ -79,20 +87,22 @@
               v-for="f in video.formats"
               :key="f.format_id"
               type="button"
-              @click="selectedFormat = f.format_id"
-              class="flex items-start gap-3.5 rounded-xl border text-left transition-all cursor-pointer"
+              @click="onSelectFormat(f)"
+              class="flex items-start gap-3.5 rounded-xl border text-left transition-all"
               :class="[
                 embedded ? 'w-full p-3.5 sm:p-4' : 'p-4',
-                selectedFormat === f.format_id
-                  ? 'border-[#3b82f6] bg-[#f0f7ff] ring-2 ring-[#3b82f6]/20'
-                  : 'border-slate-200/95 bg-white hover:border-[#93c5fd] hover:bg-slate-50/80',
+                f.vip_only
+                  ? 'border-dashed border-amber-200 bg-amber-50/40 opacity-80 cursor-pointer hover:bg-amber-50'
+                  : selectedFormat === f.format_id
+                    ? 'border-[#3b82f6] bg-[#f0f7ff] ring-2 ring-[#3b82f6]/20 cursor-pointer'
+                    : 'border-slate-200/95 bg-white hover:border-[#93c5fd] hover:bg-slate-50/80 cursor-pointer',
               ]"
             >
               <div
                 class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                :class="selectedFormat === f.format_id ? 'bg-[#3b82f6] text-white shadow-md shadow-blue-500/25' : 'bg-slate-100 text-slate-400'"
+                :class="selectedFormat === f.format_id && !f.vip_only ? 'bg-[#3b82f6] text-white shadow-md shadow-blue-500/25' : 'bg-slate-100 text-slate-400'"
               >
-                <svg v-if="f.resolution.includes('audio')" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="String(f.resolution).includes('audio')" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                 </svg>
                 <svg v-else class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,8 +110,9 @@
                 </svg>
               </div>
               <div class="min-w-0 flex-1">
-                <div class="text-[15px] font-semibold text-slate-900 leading-snug">
+                <div class="text-[15px] font-semibold text-slate-900 leading-snug flex items-center gap-2 flex-wrap">
                   {{ formatPrimaryLine(f) }}
+                  <span v-if="f.vip_only" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">VIP</span>
                 </div>
                 <div class="text-xs text-slate-400 mt-1">
                   {{ formatSecondaryLine(f) }}
@@ -147,9 +158,12 @@
               </button>
               <button
                 type="button"
-                @click="$emit('summarize')"
+                @click="onSummarizeClick"
                 :disabled="summarizing"
-                class="shrink-0 inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full text-[15px] font-semibold border-2 border-[#93c5fd] bg-white text-[#1d63d8] hover:bg-[#f0f7ff] transition-colors disabled:opacity-55 disabled:pointer-events-none shadow-sm shadow-slate-200/40"
+                class="shrink-0 inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full text-[15px] font-semibold border-2 transition-colors disabled:opacity-55 disabled:pointer-events-none shadow-sm shadow-slate-200/40"
+                :class="isVip
+                  ? 'border-[#93c5fd] bg-white text-[#1d63d8] hover:bg-[#f0f7ff]'
+                  : 'border-amber-200 bg-amber-50/50 text-amber-700 hover:bg-amber-50'"
               >
                 <svg v-if="summarizing" class="w-5 h-5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -189,15 +203,40 @@ const props = defineProps({
   downloadProgress: String,
   embedded: { type: Boolean, default: false },
   summarizeRegenerate: { type: Boolean, default: false },
+  isVip: { type: Boolean, default: false },
+  downloadsRemaining: { type: Number, default: null },
+  downloadLimit: { type: Number, default: null },
 })
 
-defineEmits(['download', 'summarize'])
+const emit = defineEmits(['download', 'summarize', 'upgrade'])
+
+function onSelectFormat(f) {
+  if (f.vip_only) {
+    emit('upgrade')
+    return
+  }
+  selectedFormat.value = f.format_id
+}
+
+function pickDefaultFormat(formats) {
+  const usable = (formats || []).filter((f) => !f.vip_only)
+  return usable[0]?.format_id || ''
+}
 
 const summarizeButtonLabel = computed(() => {
   if (props.summarizing) return 'AI 分析中…'
+  if (!props.isVip) return 'AI 总结 · VIP'
   if (props.summarizeRegenerate) return '重新总结'
   return 'AI 总结'
 })
+
+function onSummarizeClick() {
+  if (!props.isVip) {
+    emit('upgrade')
+    return
+  }
+  emit('summarize')
+}
 
 const selectedFormat = ref('')
 const imgFailed = ref(false)
@@ -219,7 +258,7 @@ const selectedFormatLabel = computed(() => {
 watch(() => props.video, (v) => {
   imgFailed.value = false
   if (v?.formats?.length > 0) {
-    selectedFormat.value = v.formats[0].format_id
+    selectedFormat.value = pickDefaultFormat(v.formats)
   }
 }, { immediate: true })
 

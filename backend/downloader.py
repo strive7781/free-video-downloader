@@ -72,8 +72,49 @@ def _format_size(bytes_val) -> str:
     return f"{bytes_val / (1024 * 1024 * 1024):.2f}GB"
 
 
-def _sanitize_filename(name: str) -> str:
-    return re.sub(r'[\\/*?:"<>|]', "_", name)
+def parse_user_error_message(err: Exception, url: str = "") -> str:
+    """Map yt-dlp / platform errors to user-facing Chinese messages."""
+    msg = str(err)
+    lower = msg.lower()
+    host = (urlparse(url).hostname or "").lower()
+
+    if "sign in to confirm" in lower or "not a bot" in lower:
+        return (
+            "YouTube 需要登录 Cookie 才能解析。请按以下步骤操作：\n"
+            "1. 用浏览器扩展导出 cookies.txt 放到 backend/ 目录（推荐）\n"
+            "2. 或关闭 Chrome/Edge 后重启后端（尝试自动读取浏览器 Cookie）\n"
+            "3. 确保 cookies.txt 中包含已登录 YouTube 的会话"
+        )
+    if "no video could be found in this tweet" in lower or (
+        "twitter" in lower and "no video" in lower
+    ):
+        return (
+            "该推文/X 帖子中没有视频，可能是纯文字、图片或 GIF 链接。"
+            "请粘贴「带视频播放」的帖子链接后再试。"
+        )
+    if "unsupported url" in lower:
+        return "不支持该链接，请确认是否为有效的视频地址"
+    if "video unavailable" in lower or "not available" in lower:
+        return "该视频不可用，可能已被删除或设为私密"
+    if "private video" in lower:
+        return "该视频为私密视频，无法下载"
+    if "403" in msg or "forbidden" in lower:
+        if "twitter" in host or "x.com" in host:
+            return "X/Twitter 访问受限，请确认链接可公开访问，或稍后重试"
+        return "平台拒绝访问，可能需要 Cookie 或该内容受地区/登录限制"
+    if "429" in msg or "too many" in lower:
+        return "请求过于频繁，请稍后再试"
+    if "cookies" in lower or "cookie" in lower:
+        return (
+            "该平台需要浏览器 Cookie 才能解析。"
+            "请将 cookies.txt 放到 backend/ 目录，或关闭浏览器后重启后端重试。"
+        )
+    # Strip yt-dlp ERROR: prefix for display
+    display = msg
+    if "ERROR:" in display:
+        display = display.split("ERROR:", 1)[-1].strip()
+    return f"解析失败: {display[:200]}"
+
 
 
 def _vcodec_compat_rank(vcodec: str | None) -> int:
@@ -127,6 +168,7 @@ def parse_video(url: str) -> dict:
                     "format_id": f["format_id"],
                     "ext": f.get("ext", "mp4"),
                     "resolution": label,
+                    "height": height,
                     "filesize": filesize,
                     "quality_note": note,
                 })
@@ -171,6 +213,7 @@ def parse_video(url: str) -> dict:
                     "format_id": f"{f['format_id']}+bestaudio",
                     "ext": "mp4",
                     "resolution": label,
+                    "height": height,
                     "filesize": filesize,
                     "quality_note": note,
                 })
@@ -195,6 +238,7 @@ def parse_video(url: str) -> dict:
         "format_id": _FORMAT_BEST_QUALITY,
         "ext": "mp4",
         "resolution": best_label,
+        "height": max_height or None,
         "filesize": None,
         "quality_note": "(视频+音频合并)",
     })

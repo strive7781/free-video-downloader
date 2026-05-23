@@ -1,9 +1,64 @@
 import axios from 'axios'
+import { useAuth } from '../composables/useAuth.js'
 
 const api = axios.create({
   baseURL: '/api',
   timeout: 120000,
 })
+
+api.interceptors.request.use((config) => {
+  const { getToken } = useAuth()
+  const token = getToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+function formatApiDetail(detail) {
+  if (detail == null || detail === '') return ''
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail
+      .map((x) =>
+        typeof x === 'object' && x != null
+          ? (x.msg || x.message || JSON.stringify(x))
+          : String(x),
+      )
+      .filter(Boolean)
+      .join('; ')
+  }
+  return String(detail)
+}
+
+export function apiErrorMessage(e) {
+  return formatApiDetail(e.response?.data?.detail) || e.message || '请求失败'
+}
+
+export async function register(email, password) {
+  const { data } = await api.post('/auth/register', { email, password })
+  return data
+}
+
+export async function login(email, password) {
+  const { data } = await api.post('/auth/login', { email, password })
+  return data
+}
+
+export async function fetchMe() {
+  const { data } = await api.get('/auth/me')
+  return data
+}
+
+export async function createCheckout() {
+  const { data } = await api.post('/billing/checkout')
+  return data
+}
+
+export async function verifyCheckout(sessionId) {
+  const { data } = await api.post('/billing/verify', { session_id: sessionId })
+  return data
+}
 
 export async function parseVideo(url) {
   const { data } = await api.post('/parse', { url })
@@ -40,6 +95,14 @@ function parseSSE(text) {
   return events
 }
 
+function authHeaders() {
+  const { getToken } = useAuth()
+  const token = getToken()
+  const headers = { 'Content-Type': 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+  return headers
+}
+
 export function streamSummarize(url, callbacks) {
   const { onMeta, onChunk, onMindmap, onDone } = callbacks
   const controller = new AbortController()
@@ -59,7 +122,7 @@ export function streamSummarize(url, callbacks) {
 
   fetch('/api/summarize/stream', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ url }),
     signal: controller.signal,
   })
@@ -103,7 +166,7 @@ export function streamChat(url, question, context, onChunk, onDone) {
 
   fetch('/api/chat', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ url, question, context }),
     signal: controller.signal,
   })

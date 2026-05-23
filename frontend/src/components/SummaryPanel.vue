@@ -10,7 +10,7 @@
         : 'max-w-4xl p-8 sm:p-10'"
     >
       <!-- Tab bar -->
-      <div class="flex-shrink-0 flex flex-wrap gap-1 border-b border-slate-100 -mx-2 px-1 pb-px">
+      <div v-if="isVip" class="flex-shrink-0 flex flex-wrap gap-1 border-b border-slate-100 -mx-2 px-1 pb-px">
         <button
           type="button"
           v-for="tab in tabs"
@@ -34,14 +34,32 @@
       </div>
 
       <p
-        v-if="errorMessage"
+        v-if="errorMessage && isVip"
         class="flex-shrink-0 mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"
         role="alert"
       >
         {{ errorMessage }}
       </p>
 
+      <!-- VIP upsell for free users -->
       <div
+        v-if="!isVip"
+        class="flex flex-col items-center justify-center text-center py-12 sm:py-16 px-6"
+      >
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center text-2xl mb-4">
+          ✨
+        </div>
+        <h3 class="text-lg font-bold text-slate-900 mb-2">AI 能力为 VIP 专属</h3>
+        <p class="text-sm text-slate-500 mb-6 max-w-xs leading-relaxed">
+          升级 VIP 后可使用 AI 视频总结、思维导图、字幕导出与 AI 问答等功能
+        </p>
+        <button type="button" class="btn-primary px-8 py-3 text-sm" @click="emit('upgrade')">
+          立即升级 VIP · ¥29 买断
+        </button>
+      </div>
+
+      <div
+        v-else
         :class="embedded
           ? 'flex-1 min-h-0 overflow-y-auto overscroll-contain pt-3'
           : 'pt-7 min-h-[200px]'"
@@ -246,6 +264,7 @@
       </div>
 
       <div
+        v-if="isVip"
         class="flex-shrink-0 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3"
         :class="embedded ? 'mt-4 pt-3' : 'mt-8 pt-4'"
       >
@@ -279,7 +298,10 @@ const props = defineProps({
   currentUrl: { type: String, default: '' },
   embedded: { type: Boolean, default: false },
   errorMessage: { type: String, default: '' },
+  isVip: { type: Boolean, default: false },
 })
+
+const emit = defineEmits(['upgrade'])
 
 const activeTab = ref('summary')
 const subtitleSearch = ref('')

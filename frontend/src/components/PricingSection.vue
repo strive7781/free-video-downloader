@@ -5,11 +5,10 @@
         选择适合你的<span class="gradient-text">方案</span>
       </h2>
       <p class="text-gray-500 mb-12 max-w-xl mx-auto">
-        免费即可体验核心功能，升级解锁更多高级能力
+        免费即可体验核心功能，一次购买永久解锁 VIP
       </p>
 
       <div class="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-        <!-- Free Plan -->
         <div class="card p-8 text-left relative">
           <h3 class="text-lg font-semibold text-gray-900 mb-1">免费版</h3>
           <p class="text-sm text-gray-500 mb-6">满足基本下载需求</p>
@@ -25,21 +24,23 @@
               {{ f }}
             </li>
           </ul>
-          <button class="w-full py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold text-sm hover:border-blue-300 hover:text-blue-600 transition-all">
-            当前方案
+          <button
+            class="w-full py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold text-sm hover:border-blue-300 hover:text-blue-600 transition-all"
+            :class="{ 'border-blue-300 text-blue-600': isLoggedIn && !isVip }"
+          >
+            {{ isLoggedIn && !isVip ? '当前方案' : (isLoggedIn ? '已升级 VIP' : '注册后可用') }}
           </button>
         </div>
 
-        <!-- Pro Plan -->
         <div class="card p-8 text-left relative border-2 border-blue-500 shadow-xl shadow-blue-100/50">
           <div class="absolute -top-3 right-6 px-3 py-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold rounded-full">
             推荐
           </div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-1">高级版</h3>
-          <p class="text-sm text-gray-500 mb-6">专业用户的最佳选择</p>
+          <h3 class="text-lg font-semibold text-gray-900 mb-1">高级版 VIP</h3>
+          <p class="text-sm text-gray-500 mb-6">一次购买，永久有效</p>
           <div class="mb-6">
             <span class="text-4xl font-bold text-gray-900">¥29</span>
-            <span class="text-gray-500 text-sm"> / 月</span>
+            <span class="text-gray-500 text-sm"> / 买断</span>
           </div>
           <ul class="space-y-3 mb-8">
             <li v-for="f in proPlan" :key="f" class="flex items-start gap-2 text-sm text-gray-600">
@@ -49,9 +50,14 @@
               {{ f }}
             </li>
           </ul>
-          <button class="btn-primary w-full py-3 text-sm">
-            立即升级
+          <button
+            class="btn-primary w-full py-3 text-sm disabled:opacity-60"
+            :disabled="checkoutLoading || isVip"
+            @click="emit('upgrade')"
+          >
+            {{ isVip ? '已是 VIP 会员' : (checkoutLoading ? '跳转支付中…' : '立即购买 VIP') }}
           </button>
+          <p v-if="checkoutError" class="mt-3 text-sm text-red-600">{{ checkoutError }}</p>
         </div>
       </div>
     </div>
@@ -59,6 +65,17 @@
 </template>
 
 <script setup>
+import { useAuth } from '../composables/useAuth.js'
+
+defineProps({
+  checkoutLoading: { type: Boolean, default: false },
+  checkoutError: { type: String, default: '' },
+})
+
+const emit = defineEmits(['upgrade'])
+
+const { isLoggedIn, isVip } = useAuth()
+
 const freePlan = [
   '每日 3 次免费下载',
   '支持 720p 清晰度',

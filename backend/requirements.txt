@@ -6,3 +6,7 @@ httpx
 requests
 openai
 python-dotenv
+stripe
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt<4.1

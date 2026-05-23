@@ -1,5 +1,6 @@
 import ipaddress
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -13,16 +14,53 @@ if not _env_file.is_file():
     load_dotenv(encoding="utf-8-sig", override=True)
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse, Response
 from pydantic import BaseModel, field_validator
 
-from downloader import parse_video, download_video, start_cleanup_scheduler
+from auth import (
+    create_access_token,
+    ensure_auth_config,
+    get_current_user,
+    get_optional_user,
+    hash_password,
+    validate_email,
+    validate_password,
+    verify_password,
+)
+from billing import (
+    FREE_DAILY_DOWNLOAD_LIMIT,
+    create_checkout_session,
+    handle_webhook,
+    verify_checkout_session,
+)
+from database import (
+    count_downloads_today,
+    create_user,
+    get_user_by_email,
+    get_user_password_hash,
+    init_db,
+    user_has_active_vip,
+)
+from downloader import (
+    parse_user_error_message,
+    parse_video,
+    download_video,
+    start_cleanup_scheduler,
+)
 from douyin import DouyinParser, is_douyin_url
+from membership import apply_tier_to_parse_result, require_vip, validate_download_format
+from rate_limit import check_download_quota, record_download
 from subtitle_extractor import extract_subtitles
-from ai_summarizer import summarize_text, summarize_text_stream, generate_mindmap, chat_stream
+from ai_summarizer import (
+    ai_error_message,
+    summarize_text,
+    summarize_text_stream,
+    generate_mindmap,
+    chat_stream,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,7 +73,16 @@ _SSE_HEADERS = {
 
 _douyin = DouyinParser(download_dir=str(Path(__file__).parent / "downloads"))
 
-app = FastAPI(title="映鉴 Kinema API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    ensure_auth_config()
+    init_db()
+    start_cleanup_scheduler()
+    yield
+
+
+app = FastAPI(title="映鉴 Kinema API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -109,60 +156,180 @@ class DownloadRequest(BaseModel):
         return _validate_url(v)
 
 
-@app.on_event("startup")
-def on_startup():
-    start_cleanup_scheduler()
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class CheckoutVerifyRequest(BaseModel):
+    session_id: str
+
+
+def _user_public(user: dict) -> dict:
+    from database import user_has_active_vip
+
+    is_vip = user_has_active_vip(user["id"])
+    user = {**user, "is_vip": is_vip}
+    used = count_downloads_today(user["id"])
+    limit = None if user.get("is_vip") else FREE_DAILY_DOWNLOAD_LIMIT
+    remaining = None if user.get("is_vip") else max(0, FREE_DAILY_DOWNLOAD_LIMIT - used)
+    return {
+        "id": user["id"],
+        "email": user["email"],
+        "is_vip": user["is_vip"],
+        "downloads_today": used,
+        "download_limit": limit,
+        "downloads_remaining": remaining,
+    }
+
+
+@app.post("/api/auth/register")
+async def api_register(req: RegisterRequest):
+    try:
+        email = validate_email(req.email)
+        password = validate_password(req.password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if get_user_by_email(email):
+        raise HTTPException(status_code=400, detail="该邮箱已注册")
+    user = create_user(email, hash_password(password))
+    try:
+        token = create_access_token(user["id"], user["email"])
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return {"code": 0, "data": {"token": token, "user": _user_public(user)}}
+
+
+@app.post("/api/auth/login")
+async def api_login(req: LoginRequest):
+    try:
+        email = validate_email(req.email)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    stored_hash = get_user_password_hash(email)
+    if not stored_hash:
+        raise HTTPException(status_code=401, detail="该邮箱尚未注册，请先注册")
+    if not verify_password(req.password, stored_hash):
+        raise HTTPException(status_code=401, detail="密码错误，请重新输入")
+    user = get_user_by_email(email)
+    if user is None:
+        raise HTTPException(status_code=401, detail="账号异常，请重新注册或联系客服")
+    try:
+        token = create_access_token(user["id"], user["email"])
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return {"code": 0, "data": {"token": token, "user": _user_public(user)}}
+
+
+@app.get("/api/auth/me")
+async def api_me(user: dict = Depends(get_current_user)):
+    return {"code": 0, "data": _user_public(user)}
+
+
+@app.post("/api/billing/checkout")
+async def api_billing_checkout(user: dict = Depends(get_current_user)):
+    if user_has_active_vip(user["id"]):
+        raise HTTPException(status_code=400, detail="您已是 VIP 会员")
+    try:
+        result = create_checkout_session(user)
+        return {"code": 0, "data": result}
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.exception("Create checkout session failed")
+        raise HTTPException(status_code=400, detail=f"创建支付会话失败: {str(e)[:200]}")
+
+
+@app.post("/api/billing/verify")
+async def api_billing_verify(req: CheckoutVerifyRequest, user: dict = Depends(get_current_user)):
+    try:
+        session = verify_checkout_session(req.session_id, user["id"])
+        refreshed = get_user_by_email(user["email"])
+        return {
+            "code": 0,
+            "data": {
+                "session": session,
+                "user": _user_public(refreshed or user),
+            },
+        }
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.exception("Verify checkout session failed")
+        raise HTTPException(status_code=400, detail=f"查询订单失败: {str(e)[:200]}")
+
+
+@app.post("/api/stripe/webhook")
+async def api_stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    try:
+        result = handle_webhook(payload, sig_header)
+        return JSONResponse(content=result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception("Stripe webhook failed")
+        raise HTTPException(status_code=400, detail="Webhook 处理失败")
 
 
 @app.post("/api/parse")
-async def api_parse(req: ParseRequest):
+async def api_parse(
+    req: ParseRequest,
+    user: dict | None = Depends(get_optional_user),
+):
+    is_vip = bool(user and user_has_active_vip(user["id"])) if user else False
     try:
         if is_douyin_url(req.url):
             result = _douyin.parse(req.url)
         else:
             result = parse_video(req.url)
+        result = apply_tier_to_parse_result(result, is_vip)
         return {"code": 0, "data": result}
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Parse failed for URL: %s", req.url)
-        msg = str(e)
-        if "Sign in to confirm" in msg or "cookies" in msg.lower() or "cookie" in msg.lower():
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "该平台需要浏览器 Cookie 才能解析。请按以下步骤操作：\n"
-                    "1. 关闭 Edge/Chrome 浏览器\n"
-                    "2. 重启后端服务后重试\n"
-                    "或者：用浏览器扩展导出 cookies.txt 放到 backend/ 目录下（推荐）"
-                ),
-            )
-        if "Unsupported URL" in msg:
-            raise HTTPException(status_code=400, detail="不支持该链接，请确认是否为有效的视频地址")
-        if "Video unavailable" in msg or "not available" in msg.lower():
-            raise HTTPException(status_code=400, detail="该视频不可用，可能已被删除或设为私密")
-        if "Private video" in msg:
-            raise HTTPException(status_code=400, detail="该视频为私密视频，无法下载")
-        raise HTTPException(status_code=400, detail=f"解析失败: {msg[:200]}")
+        detail = parse_user_error_message(e, req.url)
+        logger.warning("Parse failed for URL: %s — %s", req.url, detail.replace("\n", " "))
+        raise HTTPException(status_code=400, detail=detail)
 
 
 @app.post("/api/download")
-async def api_download(req: DownloadRequest):
+async def api_download(req: DownloadRequest, user: dict = Depends(get_current_user)):
     """Trigger download and return a file_id for the GET endpoint."""
+    check_download_quota(user)
     try:
         if is_douyin_url(req.url):
+            parsed = _douyin.parse(req.url)
+            validate_download_format(user, parsed.get("formats") or [], req.format_id)
             result = _douyin.download(req.url)
             if result is None:
                 raise RuntimeError("抖音下载器未返回结果")
             filepath, display_name = result
             file_id = Path(filepath).stem
         else:
+            parsed = parse_video(req.url)
+            validate_download_format(user, parsed.get("formats") or [], req.format_id)
             result = download_video(req.url, req.format_id)
             if result is None:
                 raise RuntimeError("下载器未返回结果，请重试")
             filepath, display_name = result
             file_id = filepath.stem
-        return {"code": 0, "file_id": file_id, "filename": display_name}
+        record_download(user)
+        refreshed = get_user_by_email(user["email"])
+        return {
+            "code": 0,
+            "file_id": file_id,
+            "filename": display_name,
+            "user": _user_public(refreshed or user),
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -196,8 +363,9 @@ class SummarizeRequest(BaseModel):
 
 
 @app.post("/api/summarize")
-async def api_summarize(req: SummarizeRequest):
+async def api_summarize(req: SummarizeRequest, user: dict = Depends(get_current_user)):
     """Extract subtitles and generate AI summary for a video."""
+    require_vip(user, "AI 视频总结")
     try:
         subtitle_data = extract_subtitles(req.url)
         full_text = subtitle_data.get("full_text", "")
@@ -234,12 +402,13 @@ async def api_summarize(req: SummarizeRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.exception("Summarize failed for URL: %s", req.url)
-        raise HTTPException(status_code=400, detail=f"总结失败: {str(e)[:200]}")
+        raise HTTPException(status_code=400, detail=ai_error_message(e))
 
 
 @app.post("/api/summarize/stream")
-async def api_summarize_stream(req: SummarizeRequest):
+async def api_summarize_stream(req: SummarizeRequest, user: dict = Depends(get_current_user)):
     """SSE endpoint: extract subtitles then stream AI summary."""
+    require_vip(user, "AI 视频总结")
     try:
         subtitle_data = extract_subtitles(req.url)
         full_text = subtitle_data.get("full_text", "")
@@ -272,7 +441,7 @@ async def api_summarize_stream(req: SummarizeRequest):
                     yield f"event: chunk\ndata: {_json.dumps({'text': text_chunk}, ensure_ascii=False)}\n\n"
             except Exception as e:
                 logger.exception("Stream summarize failed")
-                yield f"event: error\ndata: {_json.dumps({'detail': str(e)[:200]}, ensure_ascii=False)}\n\n"
+                yield f"event: error\ndata: {_json.dumps({'detail': ai_error_message(e)}, ensure_ascii=False)}\n\n"
 
             try:
                 mindmap_md = generate_mindmap(full_text, video_title=title)
@@ -289,7 +458,7 @@ async def api_summarize_stream(req: SummarizeRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.exception("Summarize stream failed for URL: %s", req.url)
-        raise HTTPException(status_code=400, detail=f"总结失败: {str(e)[:200]}")
+        raise HTTPException(status_code=400, detail=ai_error_message(e))
 
 
 class ChatRequest(BaseModel):
@@ -304,8 +473,9 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/api/chat")
-async def api_chat(req: ChatRequest):
+async def api_chat(req: ChatRequest, user: dict = Depends(get_current_user)):
     """SSE endpoint: AI Q&A based on video subtitles."""
+    require_vip(user, "AI 视频问答")
     if not req.context.strip():
         raise HTTPException(status_code=400, detail="缺少视频上下文")
     if not req.question.strip():
@@ -339,3 +509,16 @@ async def api_thumbnail(url: str = Query(...)):
             )
     except Exception:
         raise HTTPException(status_code=404, detail="无法加载缩略图")
+
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=True,
+    )
